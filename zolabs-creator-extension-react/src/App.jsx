@@ -178,10 +178,30 @@ export default function App() {
     setError("");
 
     try {
+      // Map ZoLabs parsed answers to strict Creator link names
+      // ZoLabs keys often come back lowercased or slightly modified from the label.
+      const mappedAnswers = {};
+      for (const [key, value] of Object.entries(result.parsedAnswers)) {
+        if (!value || value === "<N/A>" || value === "Not captured") continue;
+        
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const field = fields.find(f => 
+          f.linkName.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey ||
+          (f.label && f.label.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey)
+        );
+        
+        if (field) {
+          mappedAnswers[field.linkName] = value;
+        } else {
+          // Fallback if no match found
+          mappedAnswers[key] = value;
+        }
+      }
+
       const creatorRecordResponse = await createCreatorRecord(
         context.appLinkName,
         selectedForm.link_name,
-        result.parsedAnswers
+        mappedAnswers
       );
 
       const id = 
