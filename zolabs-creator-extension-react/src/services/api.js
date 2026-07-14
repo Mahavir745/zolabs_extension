@@ -58,9 +58,10 @@ export const api = {
   getCallResult: (callLogId) =>
     request(`/api/calls/${encodeURIComponent(callLogId)}/result`),
 
-  createRecord: (callLogId) =>
-    request(`/api/calls/${encodeURIComponent(callLogId)}/create-record`, {
-      method: "POST"
+  recordCreated: (callLogId, payload) =>
+    request(`/api/calls/${encodeURIComponent(callLogId)}/record-created`, {
+      method: "POST",
+      body: JSON.stringify(payload)
     }),
 
   zolabsHealth: () => request("/api/forms/zolabs-health"),

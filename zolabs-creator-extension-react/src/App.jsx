@@ -3,7 +3,8 @@ import { api } from "./services/api";
 import {
   getCreatorContext,
   getCreatorFields,
-  getCreatorForms
+  getCreatorForms,
+  createCreatorRecord
 } from "./services/creator";
 import {
   generateCallObjective,
@@ -177,9 +178,27 @@ export default function App() {
     setError("");
 
     try {
-      const response = await api.createRecord(call.callLogId);
+      const creatorRecordResponse = await createCreatorRecord(
+        context.appLinkName,
+        selectedForm.link_name,
+        result.parsedAnswers
+      );
 
-      setRecordId(response.creatorRecordId);
+      const id = 
+        creatorRecordResponse?.result?.[0]?.data?.ID ||
+        creatorRecordResponse?.result?.[0]?.data?.id ||
+        creatorRecordResponse?.data?.ID ||
+        creatorRecordResponse?.data?.id ||
+        creatorRecordResponse?.data?.[0]?.ID ||
+        creatorRecordResponse?.data?.[0]?.id ||
+        null;
+
+      if (!id) {
+        throw new Error("Failed to get a recognisable record ID from Creator.");
+      }
+
+      await api.recordCreated(call.callLogId, { creatorRecordId: String(id) });
+      setRecordId(String(id));
     } catch (recordError) {
       setError(recordError.message);
     } finally {
