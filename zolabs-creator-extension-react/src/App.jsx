@@ -17,59 +17,6 @@ import CallStatus from "./components/CallStatus";
 import ReviewResult from "./components/ReviewResult";
 import ConnectZolabs from "./components/ConnectZolabs";
 
-const demoForms = [
-  {
-    display_name: "Scholarship Follow-up",
-    link_name: "Scholarship_Follow_Up"
-  },
-  {
-    display_name: "New Appointment",
-    link_name: "New_Appointment"
-  },
-  {
-    display_name: "Student Intake",
-    link_name: "Student_Intake"
-  }
-];
-
-const demoFields = [
-  {
-    link_name: "Student_Name",
-    display_name: "Student Name",
-    type: 29,
-    mandatory: true,
-    subfields: [
-      { link_name: "first_name", display_name: "First Name", mandatory: true },
-      { link_name: "last_name", display_name: "Last Name", mandatory: true }
-    ]
-  },
-  {
-    link_name: "Current_Course",
-    display_name: "Current Course",
-    type: 1,
-    mandatory: true
-  },
-  {
-    link_name: "Current_Year",
-    display_name: "Current Year",
-    type: 1,
-    mandatory: true
-  },
-  {
-    link_name: "Continuation_Status",
-    display_name: "Continuation Status",
-    type: 12,
-    mandatory: true,
-    choices: ["Continuing", "Completed", "Discontinued"]
-  },
-  {
-    link_name: "Support_Required",
-    display_name: "Support Required",
-    type: 2,
-    mandatory: false
-  }
-];
-
 export default function App() {
   const { context, session, loading, error: authError, refreshSession } = useAuth();
   const [forms, setForms] = useState([]);
@@ -85,19 +32,18 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [recordId, setRecordId] = useState("");
   const [creatingRecord, setCreatingRecord] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const speech = useSpeechInput({ timeoutMs: 12000 });
 
   useEffect(() => {
     if (context?.available && !forms.length) {
       getCreatorForms(context.appLinkName).then(creatorForms => {
-        setForms(creatorForms.length ? creatorForms : demoForms);
+        setForms(creatorForms || []);
       }).catch(err => {
         setError(err.message);
-        setForms(demoForms);
+        setForms([]);
       });
-    } else if (!context?.available && !forms.length) {
-      setForms(demoForms);
     }
   }, [context, forms.length]);
 
@@ -139,13 +85,15 @@ export default function App() {
     setSelectedForm(form);
 
     try {
-      const rawFields = context?.available
-        ? await getCreatorFields(context.appLinkName, form.link_name)
-        : demoFields;
+      let rawFields = [];
+      if (context?.available) {
+        rawFields = await getCreatorFields(
+          context.appLinkName,
+          form.link_name
+        );
+      }
 
-      const normalisedFields = normaliseCreatorFields(
-        rawFields.length ? rawFields : demoFields
-      );
+      const normalisedFields = normaliseCreatorFields(rawFields);
 
       setFields(normalisedFields);
 
@@ -253,25 +201,7 @@ export default function App() {
     setStep("forms");
   }
 
-  if (!session?.authenticated && !loading) {
-    return (
-      <main className="app-shell">
-        <section className="card auth-card">
-          <div className="brand-mark">Z</div>
-          <h1>Connect ZoLabs with Zoho</h1>
-          <p>
-            Authenticate once to connect your Zoho Creator user account with the
-            ZoLabs extension.
-          </p>
-          <a className="primary-button link-button" href={api.connectZohoUrl()}>
-            Continue with Zoho
-          </a>
-        </section>
-      </main>
-    );
-  }
-
-  if (session?.authenticated && !session?.zolabs?.connected && !loading) {
+  if ((!session?.authenticated || !session?.zolabs?.connected) && !loading) {
     return <ConnectZolabs onConnected={refreshSession} />;
   }
 

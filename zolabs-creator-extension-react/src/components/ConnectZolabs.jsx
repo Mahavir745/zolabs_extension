@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
 
 const TERMS_TEXT = `
 By connecting a ZoLabs account you agree that:
@@ -19,8 +20,10 @@ before this ships to real customers.
 `.trim();
 
 export default function ConnectZolabs({ onConnected }) {
+  const { session } = useAuth();
   const [mode, setMode] = useState("login");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState(session?.user?.display_name || "");
+  const [email, setEmail] = useState(session?.user?.email || "");
   const [password, setPassword] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -37,15 +40,19 @@ export default function ConnectZolabs({ onConnected }) {
       return;
     }
 
-    if (!email || password.length < 8) {
-      setError("Enter a valid email and a password of at least 8 characters.");
+    if (!email || password.length < 8 || (mode === "signup" && !username)) {
+      setError(
+        mode === "signup"
+          ? "Enter a valid username, email, and a password of at least 8 characters."
+          : "Enter a valid email and a password of at least 8 characters."
+      );
       return;
     }
 
     setBusy(true);
 
     try {
-      const payload = { email, password, termsAccepted: true };
+      const payload = { username, email, password, termsAccepted: true };
 
       if (mode === "signup") {
         const response = await api.zolabsSignup(payload);
@@ -82,6 +89,22 @@ export default function ConnectZolabs({ onConnected }) {
         </div>
 
         <form onSubmit={submit}>
+          {mode === "signup" && (
+            <>
+              <label className="field-label" htmlFor="zolabs-username">
+                ZoLabs username
+              </label>
+              <input
+                id="zolabs-username"
+                className="text-input"
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+              />
+            </>
+          )}
+
           <label className="field-label" htmlFor="zolabs-email">
             ZoLabs email
           </label>

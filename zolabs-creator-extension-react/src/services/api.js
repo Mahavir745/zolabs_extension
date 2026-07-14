@@ -40,9 +40,6 @@ async function request(path, options = {}) {
 export const api = {
   session: () => request("/api/auth/session"),
 
-  connectZohoUrl: () =>
-    `${config.apiBaseUrl}/api/auth/zoho/start?return_to=${encodeURIComponent(window.location.href)}`,
-
   syncForm: (payload) =>
     request("/api/forms/sync", {
       method: "POST",
@@ -70,11 +67,12 @@ export const api = {
 
   zolabsStatus: () => request("/api/auth/zolabs/status"),
 
-  zolabsSignup: (payload) =>
-    request("/api/auth/zolabs/signup", {
+  async zolabsSignup({ username, email, password, termsAccepted }) {
+    return request("/api/auth/zolabs/signup", {
       method: "POST",
-      body: JSON.stringify(payload)
-    }),
+      body: JSON.stringify({ username, email, password, termsAccepted })
+    });
+  },
 
   zolabsLogin: (payload) =>
     request("/api/auth/zolabs/login", {
