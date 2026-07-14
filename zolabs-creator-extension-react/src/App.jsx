@@ -247,12 +247,7 @@ export default function App() {
     setError("");
 
     try {
-      const response = await api.createRecord(call.callLogId, {
-        appLinkName: context?.appLinkName,
-        formLinkName: selectedForm?.link_name,
-        accountOwnerName: context?.accountOwnerName || "",
-        parsedAnswers: result?.parsedAnswers
-      });
+      const response = await api.createRecord(call.callLogId);
 
       setRecordId(response.creatorRecordId);
     } catch (recordError) {

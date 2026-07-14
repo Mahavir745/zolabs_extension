@@ -162,6 +162,9 @@ GET /api/calls/:callLogId/result
 POST /api/calls/:callLogId/create-record
 ```
 
+The request has no body. The backend uses `callLogId` to load both the saved
+answers and the exact Creator owner/application/form mapping from PostgreSQL.
+
 ## Important production decisions
 
 - Keep the central ZoLabs account credentials only in the backend.
