@@ -110,6 +110,8 @@ Request:
 ```json
 {
   "organisationId": "org_42",
+  "accountOwnerName": "zylkercorp",
+  "creatorEnvironment": "production",
   "creatorApp": {
     "linkName": "scholarship_management",
     "displayName": "Scholarship Management"
@@ -167,4 +169,6 @@ POST /api/calls/:callLogId/create-record
 - Store Creator–ZoLabs form mappings in the backend database.
 - Use idempotency to prevent duplicate Creator records.
 - Validate Creator field types and dropdown options before creating records.
+- Match extracted answer keys to exact Creator field link names and omit
+  uncaptured placeholder values before creating records.
 - Do not automatically reuse a similar ZoLabs form without a saved mapping or explicit confirmation.

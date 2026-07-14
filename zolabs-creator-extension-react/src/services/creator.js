@@ -14,6 +14,9 @@ export async function getCreatorContext() {
   }
 
   const params = await window.ZOHO.CREATOR.UTIL.getInitParams();
+  const environmentMatch = /\/environment\/(development|stage)/i.exec(
+    params?.envUrlFragment || ""
+  );
 
   /*
    * Confirmed against Zoho's official getInitParams() docs — the real
@@ -29,6 +32,7 @@ export async function getCreatorContext() {
     appLinkName: params?.appLinkName || "",
     appDisplayName: params?.appLinkName || "",
     accountOwnerName: params?.scope || "",
+    creatorEnvironment: environmentMatch?.[1]?.toLowerCase() || "production",
     userEmail: params?.loginUser || ""
   };
 }

@@ -170,6 +170,7 @@ export default function App() {
       const syncResponse = await api.syncForm({
         organisationId: session?.organisation?.id,
         accountOwnerName: context?.accountOwnerName || "",
+        creatorEnvironment: context?.creatorEnvironment || "production",
         creatorApp: {
           linkName: context?.appLinkName,
           displayName: context?.appDisplayName
