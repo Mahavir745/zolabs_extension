@@ -190,11 +190,21 @@ export default function App() {
           (f.label && f.label.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey)
         );
         
+        let mappedValue = value;
+        
+        // Auto-format YYYY-MM-DD dates to DD-MMM-YYYY as expected by Creator
+        if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          const [yyyy, mm, dd] = value.split("-");
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthStr = months[parseInt(mm, 10) - 1];
+          mappedValue = `${dd}-${monthStr}-${yyyy}`;
+        }
+
         if (field) {
-          mappedAnswers[field.linkName] = value;
+          mappedAnswers[field.linkName] = mappedValue;
         } else {
           // Fallback if no match found
-          mappedAnswers[key] = value;
+          mappedAnswers[key] = mappedValue;
         }
       }
 
