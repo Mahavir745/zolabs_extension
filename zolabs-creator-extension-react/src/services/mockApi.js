@@ -1,4 +1,5 @@
 const calls = new Map();
+let mockZolabsConnected = false;
 
 const demoResult = {
   status: "completed",
@@ -28,8 +29,45 @@ export async function mockApi(path, options = {}) {
       user: {
         id: "user-demo",
         email: "demo@example.org"
+      },
+      zolabs: {
+        connected: mockZolabsConnected,
+        activationStatus: mockZolabsConnected ? "active" : null,
+        email: mockZolabsConnected ? "demo@example.org" : null,
+        termsVersion: "2026-07-14"
       }
     };
+  }
+
+  if (path === "/api/auth/zolabs/status") {
+    return {
+      connected: mockZolabsConnected,
+      activationStatus: mockZolabsConnected ? "active" : null,
+      email: mockZolabsConnected ? "demo@example.org" : null,
+      termsVersion: "2026-07-14"
+    };
+  }
+
+  if (path === "/api/auth/zolabs/signup" && options.method === "POST") {
+    const payload = JSON.parse(options.body || "{}");
+    return {
+      email: payload.email,
+      activationRequired: true,
+      message:
+        "ZoLabs account created (demo mode). Check your email for an " +
+        "activation link, then come back and log in below."
+    };
+  }
+
+  if (path === "/api/auth/zolabs/login" && options.method === "POST") {
+    const payload = JSON.parse(options.body || "{}");
+    mockZolabsConnected = true;
+    return { email: payload.email, connected: true };
+  }
+
+  if (path === "/api/auth/zolabs/disconnect" && options.method === "POST") {
+    mockZolabsConnected = false;
+    return {};
   }
 
   if (path === "/api/forms/sync") {
@@ -77,6 +115,7 @@ export async function mockApi(path, options = {}) {
     return {
       callLogId: id,
       status,
+      readyForReview: status === "completed",
       durationSeconds: Math.max(0, Math.floor(elapsed / 1000)),
       language: "Auto"
     };

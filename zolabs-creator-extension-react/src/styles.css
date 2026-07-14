@@ -288,6 +288,44 @@ button:disabled {
   margin-top: 18px;
 }
 
+.info-banner {
+  border-radius: 14px;
+  padding: 13px 15px;
+  margin-bottom: 18px;
+  background: #edf9f5;
+  color: #21634f;
+  border: 1px solid #b8dfd2;
+}
+
+.terms-box {
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #5a5a5a;
+  background: #f7f5f2;
+  border: 1px solid #eae5de;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9rem;
+  margin: 14px 0;
+  cursor: pointer;
+}
+
+.checkbox-row input[type="checkbox"] {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 .call-status {
   display: flex;
   gap: 20px;

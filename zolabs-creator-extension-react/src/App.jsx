@@ -14,6 +14,7 @@ import StepHeader from "./components/StepHeader";
 import FormSelector from "./components/FormSelector";
 import CallStatus from "./components/CallStatus";
 import ReviewResult from "./components/ReviewResult";
+import ConnectZolabs from "./components/ConnectZolabs";
 
 const demoForms = [
   {
@@ -126,7 +127,7 @@ export default function App() {
         const status = await api.getCallStatus(call.callLogId);
         setCallStatus(status);
 
-        if (status.status === "completed") {
+        if (status.readyForReview) {
           window.clearInterval(timer);
           const callResult = await api.getCallResult(call.callLogId);
           setResult(callResult);
@@ -284,21 +285,26 @@ export default function App() {
             Authenticate once to connect this Creator organisation with the
             ZoLabs extension.
           </p>
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => {
-              window.open(
-                api.connectZohoUrl(),
-                "_blank",
-                "noopener,noreferrer"
-              );
-            }}
-          >
+          <a className="primary-button link-button" href={api.connectZohoUrl()}>
             Continue with Zoho
-</button>
+          </a>
         </section>
       </main>
+    );
+  }
+
+  if (session?.authenticated && !session?.zolabs?.connected && !loading) {
+    return (
+      <ConnectZolabs
+        onConnected={async () => {
+          try {
+            const refreshedSession = await api.session();
+            setSession(refreshedSession);
+          } catch (refreshError) {
+            setError(refreshError.message);
+          }
+        }}
+      />
     );
   }
 

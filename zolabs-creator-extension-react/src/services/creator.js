@@ -15,17 +15,21 @@ export async function getCreatorContext() {
 
   const params = await window.ZOHO.CREATOR.UTIL.getInitParams();
 
+  /*
+   * Confirmed against Zoho's official getInitParams() docs — the real
+   * response shape is only:
+   *   { scope, envUrlFragment, appLinkName, loginUser }
+   * There is no accountOwnerName / appOwner field. "scope" is Zoho's own
+   * workspace/account identifier (e.g. "zylkercorp" in
+   * creator.zoho.com/zylkercorp/widgetapp) — that is the value the
+   * Creator Data API v2.1 needs as the owner-name path segment.
+   */
   return {
     available: true,
-    appLinkName: params?.appLinkName || params?.app_link_name || "",
-    appDisplayName: params?.appName || params?.app_name || "",
-    accountOwnerName:
-      params?.accountOwnerName ||
-      params?.account_owner_name ||
-      params?.appOwner ||
-      params?.app_owner ||
-      "",
-    userEmail: params?.loginUser || params?.login_user || ""
+    appLinkName: params?.appLinkName || "",
+    appDisplayName: params?.appLinkName || "",
+    accountOwnerName: params?.scope || "",
+    userEmail: params?.loginUser || ""
   };
 }
 

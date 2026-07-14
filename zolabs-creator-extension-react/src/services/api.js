@@ -67,5 +67,22 @@ export const api = {
       body: JSON.stringify(payload)
     }),
 
-  zolabsHealth: () => request("/api/forms/zolabs-health")
+  zolabsHealth: () => request("/api/forms/zolabs-health"),
+
+  zolabsStatus: () => request("/api/auth/zolabs/status"),
+
+  zolabsSignup: (payload) =>
+    request("/api/auth/zolabs/signup", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+
+  zolabsLogin: (payload) =>
+    request("/api/auth/zolabs/login", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+
+  zolabsDisconnect: () =>
+    request("/api/auth/zolabs/disconnect", { method: "POST" })
 };
