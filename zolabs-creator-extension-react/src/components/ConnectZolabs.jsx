@@ -4,15 +4,15 @@ import { api } from "../services/api";
 const TERMS_TEXT = `
 By connecting a ZoLabs account you agree that:
 
-1. This organisation is creating or linking its own ZoLabs account,
-   separate from any other organisation using this widget.
+1. You are creating or linking your own individual ZoLabs account,
+   separate from any other user using this widget.
 2. Voice forms and outbound calls created through this widget will be
    billed to and run under that ZoLabs account and its subscription plan.
 3. Zoho Creator field data sent to ZoLabs is used to generate and run the
    corresponding voice form, and call recordings/transcripts are stored by
    ZoLabs per its own retention policy.
 4. You are authorised to accept ZoLabs' own Terms of Service and Privacy
-   Policy on behalf of this organisation.
+   Policy on your own behalf.
 
 Replace this placeholder text with EdZola's finalised Terms & Conditions
 before this ships to real customers.
@@ -72,9 +72,9 @@ export default function ConnectZolabs({ onConnected }) {
         <div className="brand-mark">Z</div>
         <h1>Connect a ZoLabs account</h1>
         <p>
-          This organisation needs its own ZoLabs account before it can create
-          voice forms or place calls. Each Zoho Creator organisation connects
-          a separate ZoLabs account of its own.
+          You need your own ZoLabs account before you can create
+          voice forms or place calls. Every Zoho Creator user connects
+          a separate ZoLabs account of their own.
         </p>
 
         <div className="terms-box" style={{ whiteSpace: "pre-wrap" }}>

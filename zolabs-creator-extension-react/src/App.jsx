@@ -9,6 +9,7 @@ import {
   generateCallObjective,
   normaliseCreatorFields
 } from "./services/schema";
+import { useAuth } from "./contexts/AuthContext";
 import { useSpeechInput } from "./hooks/useSpeechInput";
 import StepHeader from "./components/StepHeader";
 import FormSelector from "./components/FormSelector";
@@ -70,8 +71,7 @@ const demoFields = [
 ];
 
 export default function App() {
-  const [context, setContext] = useState(null);
-  const [session, setSession] = useState(null);
+  const { context, session, loading, error: authError, refreshSession } = useAuth();
   const [forms, setForms] = useState([]);
   const [selectedForm, setSelectedForm] = useState(null);
   const [fields, setFields] = useState([]);
@@ -79,8 +79,6 @@ export default function App() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [query, setQuery] = useState("");
   const [step, setStep] = useState("forms");
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [call, setCall] = useState(null);
   const [callStatus, setCallStatus] = useState(null);
@@ -91,33 +89,17 @@ export default function App() {
   const speech = useSpeechInput({ timeoutMs: 12000 });
 
   useEffect(() => {
-    async function initialise() {
-      setLoading(true);
-      setError("");
-
-      try {
-        const [creatorContext, authSession] = await Promise.all([
-          getCreatorContext(),
-          api.session()
-        ]);
-
-        setContext(creatorContext);
-        setSession(authSession);
-
-        const creatorForms = creatorContext.available
-          ? await getCreatorForms(creatorContext.appLinkName)
-          : demoForms;
-
+    if (context?.available && !forms.length) {
+      getCreatorForms(context.appLinkName).then(creatorForms => {
         setForms(creatorForms.length ? creatorForms : demoForms);
-      } catch (initialiseError) {
-        setError(initialiseError.message);
-      } finally {
-        setLoading(false);
-      }
+      }).catch(err => {
+        setError(err.message);
+        setForms(demoForms);
+      });
+    } else if (!context?.available && !forms.length) {
+      setForms(demoForms);
     }
-
-    initialise();
-  }, []);
+  }, [context, forms.length]);
 
   useEffect(() => {
     if (!call?.callLogId || step !== "call") return;
@@ -278,7 +260,7 @@ export default function App() {
           <div className="brand-mark">Z</div>
           <h1>Connect ZoLabs with Zoho</h1>
           <p>
-            Authenticate once to connect this Creator organisation with the
+            Authenticate once to connect your Zoho Creator user account with the
             ZoLabs extension.
           </p>
           <a className="primary-button link-button" href={api.connectZohoUrl()}>
@@ -290,18 +272,7 @@ export default function App() {
   }
 
   if (session?.authenticated && !session?.zolabs?.connected && !loading) {
-    return (
-      <ConnectZolabs
-        onConnected={async () => {
-          try {
-            const refreshedSession = await api.session();
-            setSession(refreshedSession);
-          } catch (refreshError) {
-            setError(refreshError.message);
-          }
-        }}
-      />
-    );
+    return <ConnectZolabs onConnected={refreshSession} />;
   }
 
   return (
@@ -311,7 +282,7 @@ export default function App() {
           <div className="brand-mark">Z</div>
           <div>
             <strong>ZoLabs for Zoho Creator</strong>
-            <span>{session?.organisation?.name || "Loading organisation…"}</span>
+            <span>{session?.user?.display_name || session?.user?.email || "Loading user…"}</span>
           </div>
         </div>
 
@@ -322,6 +293,7 @@ export default function App() {
         ) : null}
       </nav>
 
+      {authError ? <div className="error-banner">{authError}</div> : null}
       {error ? <div className="error-banner">{error}</div> : null}
       {speech.error ? <div className="error-banner">{speech.error}</div> : null}
 
