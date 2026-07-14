@@ -284,9 +284,19 @@ export default function App() {
             Authenticate once to connect this Creator organisation with the
             ZoLabs extension.
           </p>
-          <a className="primary-button link-button" href={api.connectZohoUrl()}>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => {
+              window.open(
+                api.connectZohoUrl(),
+                "_blank",
+                "noopener,noreferrer"
+              );
+            }}
+          >
             Continue with Zoho
-          </a>
+</button>
         </section>
       </main>
     );
