@@ -8,15 +8,23 @@ export async function getCreatorContext() {
       available: false,
       appLinkName: "demo_app",
       appDisplayName: "Demo Creator App",
+      accountOwnerName: "",
       userEmail: "demo@example.org"
     };
   }
 
   const params = await window.ZOHO.CREATOR.UTIL.getInitParams();
+
   return {
     available: true,
     appLinkName: params?.appLinkName || params?.app_link_name || "",
     appDisplayName: params?.appName || params?.app_name || "",
+    accountOwnerName:
+      params?.accountOwnerName ||
+      params?.account_owner_name ||
+      params?.appOwner ||
+      params?.app_owner ||
+      "",
     userEmail: params?.loginUser || params?.login_user || ""
   };
 }

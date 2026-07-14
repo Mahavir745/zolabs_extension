@@ -168,6 +168,7 @@ export default function App() {
 
       const syncResponse = await api.syncForm({
         organisationId: session?.organisation?.id,
+        accountOwnerName: context?.accountOwnerName || "",
         creatorApp: {
           linkName: context?.appLinkName,
           displayName: context?.appDisplayName
@@ -244,6 +245,7 @@ export default function App() {
       const response = await api.createRecord(call.callLogId, {
         appLinkName: context?.appLinkName,
         formLinkName: selectedForm?.link_name,
+        accountOwnerName: context?.accountOwnerName || "",
         parsedAnswers: result?.parsedAnswers
       });
 
@@ -279,19 +281,9 @@ export default function App() {
             Authenticate once to connect this Creator organisation with the
             ZoLabs extension.
           </p>
-         <button
-          type="button"
-          className="primary-button"
-          onClick={() => {
-            window.open(
-              api.connectZohoUrl(),
-              "_blank",
-              "noopener,noreferrer"
-            );
-          }}
->
-  Continue with Zoho
-</button>
+          <a className="primary-button link-button" href={api.connectZohoUrl()}>
+            Continue with Zoho
+          </a>
         </section>
       </main>
     );
