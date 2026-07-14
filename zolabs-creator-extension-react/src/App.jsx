@@ -203,7 +203,10 @@ export default function App() {
     setError("");
 
     if (!/^\+?[1-9]\d{7,14}$/.test(phoneNumber.replace(/\s/g, ""))) {
-      setError("Enter a valid phone number, preferably in E.164 format.");
+      setError(
+        "Enter a valid phone number — a 10-digit Indian mobile number is fine, " +
+          "or use full E.164 format with country code for other countries (e.g. +14155551234)."
+      );
       return;
     }
 
