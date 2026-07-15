@@ -1,17 +1,21 @@
 import { useCallback, useRef, useState } from "react";
 
-export function useSpeechInput({ language = "en-IN", timeoutMs = 30000 } = {}) {
+export function useSpeechInput({ language = "en-IN" } = {}) {
   const recognitionRef = useRef(null);
   const timeoutRef = useRef(null);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState("");
+  const shouldListenRef = useRef(false);
 
   const stop = useCallback(() => {
+    shouldListenRef.current = false;
     window.clearTimeout(timeoutRef.current);
     recognitionRef.current?.stop?.();
     recognitionRef.current = null;
     setIsListening(false);
   }, []);
+
+  const clearError = useCallback(() => setError(""), []);
 
   const start = useCallback(
     (onResult) => {
@@ -26,31 +30,55 @@ export function useSpeechInput({ language = "en-IN", timeoutMs = 30000 } = {}) {
       stop();
       setError("");
 
-      const recognition = new Recognition();
-      recognition.lang = language;
-      recognition.interimResults = true;
-      recognition.continuous = true;
-      recognition.maxAlternatives = 1;
+      shouldListenRef.current = true;
+      let fullTranscript = "";
+      let currentInterim = "";
 
-      recognition.onresult = (event) => {
-        let transcript = "";
-        for (let i = 0; i < event.results.length; ++i) {
-          transcript += event.results[i][0].transcript;
-        }
-        
-        const finalTranscript = transcript.trim();
-        if (finalTranscript) {
-          onResult?.(finalTranscript);
-        }
-      };
+      const initAndStart = () => {
+        if (!shouldListenRef.current) return;
 
-      recognition.onerror = (event) => {
-        if (event.error !== 'no-speech') {
+        const recognition = new Recognition();
+        recognition.lang = language;
+        recognition.interimResults = true;
+        recognition.continuous = false; // Bypass the Chrome "network" error bug
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+          let sessionTranscript = "";
+          let isFinal = false;
+
+          for (let i = 0; i < event.results.length; ++i) {
+            sessionTranscript += event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              isFinal = true;
+            }
+          }
+
+          currentInterim = sessionTranscript;
+          
+          const combined = (fullTranscript + " " + currentInterim).trim();
+          if (combined) {
+            onResult?.(combined);
+          }
+
+          if (isFinal) {
+            fullTranscript = (fullTranscript + " " + currentInterim).trim();
+            currentInterim = "";
+          }
+        };
+
+        recognition.onerror = (event) => {
+          if (event.error === 'no-speech') return;
+          
+          // If we got a network error but we are auto-restarting, it's just Chrome being flaky.
+          if (event.error === 'network') {
+             // We'll let onend handle the restart naturally
+             return;
+          }
+
+          shouldListenRef.current = false;
           let errorMsg = "Microphone error";
           switch (event.error) {
-            case "network":
-              errorMsg = "Speech recognition failed due to a network error. Please check your internet connection.";
-              break;
             case "not-allowed":
             case "service-not-allowed":
               errorMsg = "Microphone access was denied. Please allow microphone permissions in your browser settings.";
@@ -59,31 +87,43 @@ export function useSpeechInput({ language = "en-IN", timeoutMs = 30000 } = {}) {
               errorMsg = "No microphone was found. Ensure your microphone is plugged in and working.";
               break;
             case "aborted":
-              errorMsg = "Speech recognition was aborted.";
-              break;
+              return; // Ignore manual aborts
             default:
               errorMsg = `Microphone error: ${event.error}`;
           }
           setError(errorMsg);
+          stop();
+        };
+
+        recognition.onend = () => {
+          if (shouldListenRef.current) {
+            if (currentInterim) {
+              fullTranscript = (fullTranscript + " " + currentInterim).trim();
+              currentInterim = "";
+            }
+            try {
+              initAndStart();
+            } catch (e) {
+              stop();
+            }
+          } else {
+            setIsListening(false);
+          }
+        };
+
+        recognitionRef.current = recognition;
+        try {
+          recognition.start();
+          setIsListening(true);
+        } catch (e) {
+          // Ignore start errors
         }
-        stop();
       };
 
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current = recognition;
-      recognition.start();
-      setIsListening(true);
-
-      // Extend timeout to 30 seconds for longer dictation
-      timeoutRef.current = window.setTimeout(stop, timeoutMs);
+      initAndStart();
     },
-    [language, stop, timeoutMs]
+    [language, stop]
   );
-
-  const clearError = useCallback(() => setError(""), []);
 
   return { isListening, error, start, stop, clearError };
 }
