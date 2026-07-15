@@ -304,23 +304,6 @@ export default function ConnectZolabs({ onConnected }) {
                 ? "Already have a ZoLabs account? Log in instead"
                 : "New to ZoLabs? Create an account instead"}
             </button>
-
-            <button
-              type="button"
-              className="zoho-sso-button"
-              onClick={signInWithZoho}
-              disabled={busy}
-            >
-              <div className="zoho-logo-container">
-                <span className="zoho-c-red">Z</span>
-                <span className="zoho-c-green">O</span>
-                <span className="zoho-c-yellow">H</span>
-                <span className="zoho-c-blue">O</span>
-              </div>
-              <span className="zoho-sso-text">
-                {busy ? "Signing in..." : zohoEmail ? `Continue as ${zohoEmail}` : "Sign in with Zoho"}
-              </span>
-            </button>
           </form>
         )}
       </section>
