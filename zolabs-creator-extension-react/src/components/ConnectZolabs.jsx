@@ -54,7 +54,7 @@ export default function ConnectZolabs({ onConnected }) {
     setInfo("");
 
     if (!termsAccepted) {
-      setError("You must accept the Terms & Conditions to continue.");
+      setError("Please accept the Terms & Conditions before continuing.");
       setBusy(false);
       return;
     }
@@ -62,31 +62,28 @@ export default function ConnectZolabs({ onConnected }) {
     try {
       let emailToUse = zohoEmail;
       
-      // If we didn't get it on mount, try fetching it right now
       if (!emailToUse && window.ZOHO && window.ZOHO.CREATOR) {
         const params = await window.ZOHO.CREATOR.UTIL.getInitParams();
         emailToUse = params.loginUser;
       }
 
       if (!emailToUse) {
-        throw new Error("Could not automatically retrieve your Zoho email. Please use the email login fallback.");
+        throw new Error("We couldn't automatically retrieve your Zoho email. Please use the email login option below.");
       }
 
-      // Call our backend SSO route
       const response = await api.zolabsZohoSSO({ email: emailToUse, termsAccepted: true });
       
       if (response.activationRequired) {
         setInfo(
-          `🎉 Account successfully created!\n\nFor your security, please check your inbox (${emailToUse}) and click the ZoLabs activation link.\n\nOnce activated, simply click 'Sign in with Zoho' below to jump right in!`
+          `🎉 Almost there! We've created your account.\n\nFor your security, please check your inbox (${emailToUse}) and click the activation link.\n\nOnce activated, simply click 'Sign in with Zoho' again to jump right in!`
         );
-        // Keep them on the SSO button view so they can just click it again after activating
         setUseEmailFallback(false);
       } else {
         onConnected();
       }
     } catch (err) {
       setError(
-        err.message || "Failed to sign in with Zoho. Please use the email login below."
+        err.message || "We couldn't securely sign you in with Zoho right now. Please use the email login option below."
       );
       setUseEmailFallback(true);
     } finally {
@@ -100,15 +97,15 @@ export default function ConnectZolabs({ onConnected }) {
     setInfo("");
 
     if (!termsAccepted) {
-      setError("You must accept the Terms & Conditions to continue.");
+      setError("Please accept the Terms & Conditions before continuing.");
       return;
     }
 
     if (!email || password.length < 8 || (mode === "signup" && !username)) {
       setError(
         mode === "signup"
-          ? "Enter a valid username, email, and a password of at least 8 characters."
-          : "Enter a valid email and a password of at least 8 characters."
+          ? "Please provide a valid username, email, and a password of at least 8 characters."
+          : "Please provide a valid email and a password of at least 8 characters."
       );
       return;
     }
@@ -122,8 +119,7 @@ export default function ConnectZolabs({ onConnected }) {
         const response = await api.zolabsSignup(payload);
         setInfo(
           response.message ||
-            "Account created. Check your email for a ZoLabs activation link, " +
-              "then switch to Log in below."
+            "🎉 Account successfully created! Please check your email for an activation link, then switch to 'Log in' below."
         );
         setMode("login");
       } else {
