@@ -32,6 +32,7 @@ export default function ConnectZolabs({ onConnected }) {
 
   const [useEmailFallback, setUseEmailFallback] = useState(false);
   const [zohoEmail, setZohoEmail] = useState("");
+  const [showTerms, setShowTerms] = useState(false);
 
   useEffect(() => {
     // Attempt to pre-fetch the user email from the Zoho SDK if available
@@ -144,8 +145,19 @@ export default function ConnectZolabs({ onConnected }) {
           a separate ZoLabs account of their own.
         </p>
 
-        <div className="terms-box" style={{ whiteSpace: "pre-wrap" }}>
-          {TERMS_TEXT}
+        <div className="terms-container">
+          <button 
+            type="button" 
+            className="terms-toggle" 
+            onClick={() => setShowTerms(!showTerms)}
+          >
+            Read Terms & Conditions
+            <span className={`terms-arrow ${showTerms ? 'open' : ''}`}>▼</span>
+          </button>
+          
+          <div className={`terms-box ${showTerms ? 'open' : ''}`} style={{ whiteSpace: "pre-wrap" }}>
+            {TERMS_TEXT}
+          </div>
         </div>
 
         <label className="checkbox-row" style={{ marginBottom: "32px", justifyContent: "center" }}>
@@ -190,13 +202,19 @@ export default function ConnectZolabs({ onConnected }) {
           <form onSubmit={submit} className="fallback-form">
             <button
               type="button"
-              className="text-button back-button"
+              className="back-button-styled"
               onClick={() => {
                 setUseEmailFallback(false);
                 setError("");
               }}
             >
-              ← Back to Zoho Sign in
+              <div className="zoho-logo-container" style={{ fontSize: '0.9rem', marginRight: '8px' }}>
+                <span className="zoho-c-red">Z</span>
+                <span className="zoho-c-green">O</span>
+                <span className="zoho-c-yellow">H</span>
+                <span className="zoho-c-blue">O</span>
+              </div>
+              <span style={{ fontWeight: 600 }}>← Back to Sign in</span>
             </button>
             
             {mode === "signup" && (
