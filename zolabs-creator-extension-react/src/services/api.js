@@ -75,6 +75,12 @@ export const api = {
     });
   },
 
+  zolabsZohoSSO: (payload) =>
+    request("/api/auth/zolabs/zoho-sso", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+
   zolabsLogin: (payload) =>
     request("/api/auth/zolabs/login", {
       method: "POST",

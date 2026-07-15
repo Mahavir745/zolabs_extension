@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -29,6 +29,59 @@ export default function ConnectZolabs({ onConnected }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
+
+  const [useEmailFallback, setUseEmailFallback] = useState(false);
+  const [zohoEmail, setZohoEmail] = useState("");
+
+  useEffect(() => {
+    // Attempt to pre-fetch the user email from the Zoho SDK if available
+    try {
+      if (window.ZOHO && window.ZOHO.CREATOR) {
+        window.ZOHO.CREATOR.UTIL.getInitParams().then((params) => {
+          if (params && params.loginUser) {
+            setZohoEmail(params.loginUser);
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Zoho SDK not available yet.");
+    }
+  }, []);
+
+  async function signInWithZoho() {
+    setBusy(true);
+    setError("");
+    setInfo("");
+
+    if (!termsAccepted) {
+      setError("You must accept the Terms & Conditions to continue.");
+      setBusy(false);
+      return;
+    }
+
+    try {
+      let emailToUse = zohoEmail;
+      
+      // If we didn't get it on mount, try fetching it right now
+      if (!emailToUse && window.ZOHO && window.ZOHO.CREATOR) {
+        const params = await window.ZOHO.CREATOR.UTIL.getInitParams();
+        emailToUse = params.loginUser;
+      }
+
+      if (!emailToUse) {
+        throw new Error("Could not automatically retrieve your Zoho email. Please use the email login fallback.");
+      }
+
+      // Call our backend SSO route
+      await api.zolabsZohoSSO({ email: emailToUse, termsAccepted: true });
+      onConnected();
+    } catch (err) {
+      setError(err.message || "Failed to sign in with Zoho. Please use the email login below.");
+      setUseEmailFallback(true);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit(event) {
     event.preventDefault();
@@ -88,81 +141,123 @@ export default function ConnectZolabs({ onConnected }) {
           {TERMS_TEXT}
         </div>
 
-        <form onSubmit={submit}>
-          {mode === "signup" && (
-            <>
-              <label className="field-label" htmlFor="zolabs-username">
-                ZoLabs username
-              </label>
-              <input
-                id="zolabs-username"
-                className="text-input"
-                type="text"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                autoComplete="username"
-              />
-            </>
-          )}
-
-          <label className="field-label" htmlFor="zolabs-email">
-            ZoLabs email
-          </label>
+        <label className="checkbox-row" style={{ marginBottom: "32px", justifyContent: "center" }}>
           <input
-            id="zolabs-email"
-            className="text-input"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            autoComplete="email"
+            type="checkbox"
+            checked={termsAccepted}
+            onChange={(event) => setTermsAccepted(event.target.checked)}
           />
+          <span>I have read and accept the Terms & Conditions above.</span>
+        </label>
 
-          <label className="field-label" htmlFor="zolabs-password">
-            ZoLabs password
-          </label>
-          <input
-            id="zolabs-password"
-            className="text-input"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete={mode === "signup" ? "new-password" : "current-password"}
-          />
+        {error && !useEmailFallback ? <div className="error-banner">{error}</div> : null}
+        {info && !useEmailFallback ? <div className="info-banner">{info}</div> : null}
 
-          <label className="checkbox-row">
+        {!useEmailFallback ? (
+          <div className="sso-container">
+            <button
+              type="button"
+              className="zoho-sso-button"
+              onClick={signInWithZoho}
+              disabled={busy}
+            >
+              <div className="zoho-logo-container">
+                <span className="zoho-c-red">Z</span>
+                <span className="zoho-c-green">O</span>
+                <span className="zoho-c-yellow">H</span>
+                <span className="zoho-c-blue">O</span>
+              </div>
+              <span className="zoho-sso-text">
+                {busy ? "Signing in..." : zohoEmail ? `Continue as ${zohoEmail}` : "Sign in with Zoho"}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="text-button small-text"
+              onClick={() => setUseEmailFallback(true)}
+            >
+              Use Email & Password instead
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="fallback-form">
+            <button
+              type="button"
+              className="text-button back-button"
+              onClick={() => {
+                setUseEmailFallback(false);
+                setError("");
+              }}
+            >
+              ← Back to Zoho Sign in
+            </button>
+            
+            {mode === "signup" && (
+              <>
+                <label className="field-label" htmlFor="zolabs-username">
+                  ZoLabs username
+                </label>
+                <input
+                  id="zolabs-username"
+                  className="text-input"
+                  type="text"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  autoComplete="username"
+                />
+              </>
+            )}
+
+            <label className="field-label" htmlFor="zolabs-email">
+              ZoLabs email
+            </label>
             <input
-              type="checkbox"
-              checked={termsAccepted}
-              onChange={(event) => setTermsAccepted(event.target.checked)}
+              id="zolabs-email"
+              className="text-input"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
             />
-            <span>I have read and accept the Terms & Conditions above.</span>
-          </label>
 
-          {error ? <div className="error-banner">{error}</div> : null}
-          {info ? <div className="info-banner">{info}</div> : null}
+            <label className="field-label" htmlFor="zolabs-password">
+              ZoLabs password
+            </label>
+            <input
+              id="zolabs-password"
+              className="text-input"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+            />
 
-          <button type="submit" className="primary-button" disabled={busy}>
-            {busy
-              ? "Please wait…"
-              : mode === "signup"
-                ? "Create ZoLabs account"
-                : "Log in to ZoLabs"}
-          </button>
-        </form>
+            {error ? <div className="error-banner">{error}</div> : null}
+            {info ? <div className="info-banner">{info}</div> : null}
 
-        <button
-          type="button"
-          className="text-button"
-          onClick={() => {
-            setMode(mode === "signup" ? "login" : "signup");
-            setError("");
-            setInfo("");
-          }}
-        >
-          {mode === "signup"
-            ? "Already have a ZoLabs account? Log in instead"
-            : "New to ZoLabs? Create an account instead"}
-        </button>
+            <button type="submit" className="primary-button" disabled={busy}>
+              {busy
+                ? "Please wait…"
+                : mode === "signup"
+                  ? "Create ZoLabs account"
+                  : "Log in to ZoLabs"}
+            </button>
+
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => {
+                setMode(mode === "signup" ? "login" : "signup");
+                setError("");
+                setInfo("");
+              }}
+            >
+              {mode === "signup"
+                ? "Already have a ZoLabs account? Log in instead"
+                : "New to ZoLabs? Create an account instead"}
+            </button>
+          </form>
+        )}
       </section>
     </main>
   );

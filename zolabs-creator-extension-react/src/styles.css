@@ -596,3 +596,82 @@ button {
     text-align: center;
   }
 }
+
+.sso-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.zoho-sso-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 320px;
+  padding: 14px 24px;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.zoho-sso-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+}
+
+.zoho-sso-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.zoho-logo-container {
+  display: flex;
+  font-family: Arial, sans-serif;
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: -1px;
+}
+
+.zoho-c-red { color: #e43d30; }
+.zoho-c-green { color: #40a944; }
+.zoho-c-yellow { color: #f2a63b; }
+.zoho-c-blue { color: #3275c5; }
+
+.zoho-sso-text {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  letter-spacing: 0.2px;
+}
+
+.small-text {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.fallback-form {
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.4s ease;
+}
+
+.back-button {
+  align-self: flex-start;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
