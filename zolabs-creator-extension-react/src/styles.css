@@ -537,6 +537,24 @@ button {
   gap: 12px;
 }
 
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0;
+  margin-left: auto;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.close-btn:hover {
+  opacity: 1;
+}
+
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }

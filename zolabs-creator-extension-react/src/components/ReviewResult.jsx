@@ -17,8 +17,6 @@ export default function ReviewResult({
       <p className="eyebrow">Call completed</p>
       <h2>Review extracted information</h2>
 
-      {result?.summary ? <p className="summary-box">{result.summary}</p> : null}
-
       <div className="result-list">
         {entries.map(([key, value]) => (
           <div className="result-row" key={key}>
@@ -35,8 +33,10 @@ export default function ReviewResult({
       ) : null}
 
       <details className="transcript">
-        <summary>View transcript</summary>
-        <p>{result?.transcript || "Transcript not available."}</p>
+        <summary>View call summary</summary>
+        <div className="summary-box" style={{ marginTop: '16px', marginBottom: 0 }}>
+          {result?.summary || "Summary not available for this call."}
+        </div>
       </details>
 
       {recordId ? (

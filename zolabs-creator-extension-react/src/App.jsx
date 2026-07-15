@@ -34,8 +34,15 @@ export default function App() {
   const [recordId, setRecordId] = useState("");
   const [creatingRecord, setCreatingRecord] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [activeSpeechField, setActiveSpeechField] = useState(null);
 
-  const speech = useSpeechInput({ timeoutMs: 12000 });
+  const speech = useSpeechInput({ timeoutMs: 30000 });
+
+  useEffect(() => {
+    if (!speech.isListening) {
+      setActiveSpeechField(null);
+    }
+  }, [speech.isListening]);
 
   useEffect(() => {
     if (context?.available && !forms.length) {
@@ -128,8 +135,16 @@ export default function App() {
     }
   }
 
-  function captureVoice(setter) {
-    speech.start((transcript) => setter(transcript));
+  function toggleVoice(fieldId, setter, currentValue) {
+    if (speech.isListening && activeSpeechField === fieldId) {
+      speech.stop();
+      setActiveSpeechField(null);
+    } else {
+      setActiveSpeechField(fieldId);
+      speech.start((newTranscript) => {
+        setter(currentValue ? currentValue.trim() + " " + newTranscript : newTranscript);
+      });
+    }
   }
 
   async function startCall() {
@@ -290,9 +305,25 @@ export default function App() {
         </div>
       </nav>
 
-      {authError ? <div className="error-banner">{authError}</div> : null}
-      {error ? <div className="error-banner">{error}</div> : null}
-      {speech.error ? <div className="error-banner">{speech.error}</div> : null}
+      {authError ? (
+        <div className="error-banner">
+          <span style={{ flexGrow: 1 }}>{authError}</span>
+        </div>
+      ) : null}
+      
+      {error ? (
+        <div className="error-banner">
+          <span style={{ flexGrow: 1 }}>{error}</span>
+          <button className="close-btn" onClick={() => setError("")}>&times;</button>
+        </div>
+      ) : null}
+      
+      {speech.error ? (
+        <div className="error-banner">
+          <span style={{ flexGrow: 1 }}>{speech.error}</span>
+          <button className="close-btn" onClick={speech.clearError}>&times;</button>
+        </div>
+      ) : null}
 
       {step === "forms" ? (
         <>
@@ -350,10 +381,10 @@ export default function App() {
               />
               <button
                 type="button"
-                className={speech.isListening ? "mic-button active" : "mic-button"}
-                onClick={() => captureVoice(setPhoneNumber)}
+                className={speech.isListening && activeSpeechField === 'phone' ? "mic-button active" : "mic-button"}
+                onClick={() => toggleVoice('phone', setPhoneNumber, phoneNumber)}
               >
-                {speech.isListening ? "Stop" : "Speak"}
+                {speech.isListening && activeSpeechField === 'phone' ? "Stop" : "Speak"}
               </button>
             </div>
 
@@ -370,10 +401,10 @@ export default function App() {
               />
               <button
                 type="button"
-                className={speech.isListening ? "mic-button active" : "mic-button"}
-                onClick={() => captureVoice(setQuery)}
+                className={speech.isListening && activeSpeechField === 'query' ? "mic-button active" : "mic-button"}
+                onClick={() => toggleVoice('query', setQuery, query)}
               >
-                {speech.isListening ? "Stop" : "Speak"}
+                {speech.isListening && activeSpeechField === 'query' ? "Stop" : "Speak"}
               </button>
             </div>
 
