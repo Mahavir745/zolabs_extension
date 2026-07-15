@@ -199,21 +199,7 @@ export default function ConnectZolabs({ onConnected }) {
           </div>
         ) : (
           <form onSubmit={submit} className="fallback-form">
-            <button
-              type="button"
-              className="back-button-styled"
-              onClick={() => {
-                setUseEmailFallback(false);
-                setError("");
-              }}
-            >
-              <div className="zoho-logo-container" style={{ fontSize: '0.9rem', marginRight: '8px' }}>
-                <span className="zoho-c-red">Z</span>
-                <span className="zoho-c-green">O</span>
-                <span className="zoho-c-yellow">H</span>
-                <span className="zoho-c-blue">O</span>
-              </div>
-            </button>
+
             
             {mode === "signup" && (
               <>
@@ -278,6 +264,22 @@ export default function ConnectZolabs({ onConnected }) {
               />
               <span>I have read and accept the Terms & Conditions.</span>
             </label>
+
+            <button
+              type="button"
+              className="back-button-styled"
+              onClick={() => {
+                setUseEmailFallback(false);
+                setError("");
+              }}
+            >
+              <div className="zoho-logo-container" style={{ fontSize: '0.9rem', marginRight: '8px' }}>
+                <span className="zoho-c-red">Z</span>
+                <span className="zoho-c-green">O</span>
+                <span className="zoho-c-yellow">H</span>
+                <span className="zoho-c-blue">O</span>
+              </div>
+            </button>
 
             {error ? <div className="error-banner">{error}</div> : null}
             {info ? <div className="info-banner">{info}</div> : null}

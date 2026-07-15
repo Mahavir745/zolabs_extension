@@ -729,7 +729,6 @@ button {
 .back-button-styled {
   align-self: flex-start;
   display: flex;
-  align-items: center;
   background: #ffffff;
   border: 1px solid #cbd5e1;
   color: var(--text-primary);

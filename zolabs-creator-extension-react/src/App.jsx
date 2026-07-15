@@ -32,7 +32,7 @@ export default function App() {
   // Array of active/past calls
   const [calls, setCalls] = useState([]);
   const callsRef = useRef(calls);
-  
+
   useEffect(() => {
     callsRef.current = calls;
   }, [calls]);
@@ -59,16 +59,16 @@ export default function App() {
   // Polling Effect for multiple calls
   useEffect(() => {
     const timer = window.setInterval(async () => {
-      const activeCalls = callsRef.current.filter(c => 
+      const activeCalls = callsRef.current.filter(c =>
         !["failed", "completed_with_record", "record_failed", "no_answer", "busy"].includes(c.internalStatus)
       );
-      
+
       if (activeCalls.length === 0) return;
 
       for (const call of activeCalls) {
         try {
           const status = await api.getCallStatus(call.callLogId);
-          
+
           setCalls(prev => prev.map(c => {
             if (c.callLogId === call.callLogId) {
               return { ...c, status: status.status, durationSeconds: status.durationSeconds };
@@ -79,7 +79,7 @@ export default function App() {
           if (status.readyForReview && call.internalStatus !== "creating_record") {
             // Immediately kick off record creation
             setCalls(prev => prev.map(c => c.callLogId === call.callLogId ? { ...c, internalStatus: "creating_record" } : c));
-            
+
             const callResult = await api.getCallResult(call.callLogId);
             await handleCreateRecord(callResult, call);
           } else if (["failed", "busy", "no_answer"].includes(status.status)) {
@@ -100,13 +100,13 @@ export default function App() {
       for (const [key, value] of Object.entries(result.parsedAnswers || {})) {
         if (key.toLowerCase().replace(/[^a-z0-9]/g, "") === "zolabscallsummary") continue;
         if (!value || value === "<N/A>" || value === "Not captured") continue;
-        
+
         const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const field = callData.fields.find(f => 
+        const field = callData.fields.find(f =>
           f.linkName.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey ||
           (f.label && f.label.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey)
         );
-        
+
         let mappedValue = value;
         if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
           const [yyyy, mm, dd] = value.split("-");
@@ -128,7 +128,7 @@ export default function App() {
         mappedAnswers
       );
 
-      const id = 
+      const id =
         creatorRecordResponse?.result?.[0]?.data?.ID ||
         creatorRecordResponse?.result?.[0]?.data?.id ||
         creatorRecordResponse?.data?.ID ||
@@ -142,16 +142,16 @@ export default function App() {
       }
 
       await api.recordCreated(callData.callLogId, { creatorRecordId: String(id) });
-      
-      setCalls(prev => prev.map(c => 
-        c.callLogId === callData.callLogId 
-          ? { ...c, internalStatus: "completed_with_record", recordId: String(id), summary: result.summary } 
+
+      setCalls(prev => prev.map(c =>
+        c.callLogId === callData.callLogId
+          ? { ...c, internalStatus: "completed_with_record", recordId: String(id), summary: result.summary }
           : c
       ));
     } catch (recordError) {
-      setCalls(prev => prev.map(c => 
-        c.callLogId === callData.callLogId 
-          ? { ...c, internalStatus: "record_failed", error: recordError.message } 
+      setCalls(prev => prev.map(c =>
+        c.callLogId === callData.callLogId
+          ? { ...c, internalStatus: "record_failed", error: recordError.message }
           : c
       ));
     }
@@ -177,7 +177,7 @@ export default function App() {
       }
 
       const normalisedFields = normaliseCreatorFields(rawFields);
-      
+
       // Inject Summary Field to force ZoLabs to output a call summary in parsedAnswers
       normalisedFields.push({
         linkName: "zolabs_call_summary",
@@ -237,7 +237,7 @@ export default function App() {
     if (!/^\+?[1-9]\d{7,14}$/.test(phoneNumber.replace(/\s/g, ""))) {
       setError(
         "Enter a valid phone number — a 10-digit Indian mobile number is fine, " +
-          "or use full E.164 format with country code for other countries (e.g. +14155551234)."
+        "or use full E.164 format with country code for other countries (e.g. +14155551234)."
       );
       return;
     }
@@ -267,7 +267,7 @@ export default function App() {
         status: response.status,
         internalStatus: "polling", // polling, creating_record, completed_with_record, record_failed, failed, busy, no_answer
         durationSeconds: 0,
-        fields: fields 
+        fields: fields
       }, ...prev]);
 
       reset();
@@ -317,10 +317,10 @@ export default function App() {
               Change Form
             </button>
           ) : null}
-          
-          <button 
-            type="button" 
-            className="text-button" 
+
+          <button
+            type="button"
+            className="text-button"
             style={{ color: '#ff6b6b' }}
             onClick={async () => {
               try {
@@ -343,14 +343,14 @@ export default function App() {
           <span style={{ flexGrow: 1 }}>{authError}</span>
         </div>
       ) : null}
-      
+
       {error ? (
         <div className="error-banner">
           <span style={{ flexGrow: 1 }}>{error}</span>
           <button className="close-btn" onClick={() => setError("")}>&times;</button>
         </div>
       ) : null}
-      
+
       {speech.error ? (
         <div className="error-banner">
           <span style={{ flexGrow: 1 }}>{speech.error}</span>
@@ -376,12 +376,12 @@ export default function App() {
                     <span className="call-duration">{c.durationSeconds ? `${c.durationSeconds}s` : ""}</span>
                   </div>
                   <div className="call-card-form">{c.formDisplayName}</div>
-                  
+
                   <div className="call-card-status">
                     <span className={`status-indicator indicator-${c.status || 'default'}`}></span>
                     {getStatusLabel(c)}
                   </div>
-                  
+
                   {c.recordId && (
                     <div className="call-card-record">
                       ID: {c.recordId}
