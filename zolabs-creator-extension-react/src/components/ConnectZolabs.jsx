@@ -214,7 +214,7 @@ export default function ConnectZolabs({ onConnected }) {
                 <span className="zoho-c-yellow">H</span>
                 <span className="zoho-c-blue">O</span>
               </div>
-              <span style={{ fontWeight: 600 }}>← Back to Sign in</span>
+              {/* <span style={{ fontWeight: 600 }}>Back to Sign in</span> */}
             </button>
             
             {mode === "signup" && (
