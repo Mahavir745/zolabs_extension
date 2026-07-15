@@ -29,13 +29,10 @@ export default function ConnectZolabs({ onConnected }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
-
-  const [useEmailFallback, setUseEmailFallback] = useState(false);
   const [zohoEmail, setZohoEmail] = useState("");
   const [showTerms, setShowTerms] = useState(false);
 
   useEffect(() => {
-    // Attempt to pre-fetch the user email from the Zoho SDK if available
     try {
       if (window.ZOHO && window.ZOHO.CREATOR) {
         window.ZOHO.CREATOR.UTIL.getInitParams().then((params) => {
@@ -69,7 +66,7 @@ export default function ConnectZolabs({ onConnected }) {
       }
 
       if (!emailToUse) {
-        throw new Error("We couldn't automatically retrieve your Zoho email. Please use the email login option below.");
+        throw new Error("We couldn't automatically retrieve your Zoho email. Please use the email and password option above.");
       }
 
       const response = await api.zolabsZohoSSO({ email: emailToUse, termsAccepted: true });
@@ -78,15 +75,13 @@ export default function ConnectZolabs({ onConnected }) {
         setInfo(
           `🎉 Almost there! We've created your account.\n\nFor your security, please check your inbox (${emailToUse}) and click the activation link.\n\nOnce activated, simply click 'Sign in with Zoho' again to jump right in!`
         );
-        setUseEmailFallback(false);
       } else {
         onConnected();
       }
     } catch (err) {
       setError(
-        err.message || "We couldn't securely sign you in with Zoho right now. Please use the email login option below."
+        err.message || "We couldn't securely sign you in with Zoho right now. Please use the email option above."
       );
-      setUseEmailFallback(true);
     } finally {
       setBusy(false);
     }
@@ -145,144 +140,119 @@ export default function ConnectZolabs({ onConnected }) {
           a separate ZoLabs account of their own.
         </p>
 
-        <div className="terms-container">
-          <button 
-            type="button" 
-            className="terms-toggle" 
-            onClick={() => setShowTerms(!showTerms)}
-          >
-            Read Terms & Conditions
-            <span className={`terms-arrow ${showTerms ? 'open' : ''}`}>▼</span>
-          </button>
-          
-          <div className={`terms-box ${showTerms ? 'open' : ''}`} style={{ whiteSpace: "pre-wrap" }}>
-            {TERMS_TEXT}
-          </div>
-        </div>
+        <form onSubmit={submit} className="fallback-form">
+          {mode === "signup" && (
+            <>
+              <label className="field-label" htmlFor="zolabs-username">
+                ZoLabs username
+              </label>
+              <input
+                id="zolabs-username"
+                className="text-input"
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+              />
+            </>
+          )}
 
-        <label className="checkbox-row" style={{ marginBottom: "32px", justifyContent: "center" }}>
+          <label className="field-label" htmlFor="zolabs-email">
+            ZoLabs email
+          </label>
           <input
-            type="checkbox"
-            checked={termsAccepted}
-            onChange={(event) => setTermsAccepted(event.target.checked)}
+            id="zolabs-email"
+            className="text-input"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
           />
-          <span>I have read and accept the Terms & Conditions above.</span>
-        </label>
 
-        {error && !useEmailFallback ? <div className="error-banner">{error}</div> : null}
-        {info && !useEmailFallback ? <div className="info-banner">{info}</div> : null}
+          <label className="field-label" htmlFor="zolabs-password">
+            ZoLabs password
+          </label>
+          <input
+            id="zolabs-password"
+            className="text-input"
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete={mode === "signup" ? "new-password" : "current-password"}
+          />
 
-        {!useEmailFallback ? (
-          <div className="sso-container">
-            <button
-              type="button"
-              className="zoho-sso-button"
-              onClick={signInWithZoho}
-              disabled={busy}
+          <div className="terms-container" style={{ marginTop: "24px" }}>
+            <button 
+              type="button" 
+              className="terms-toggle" 
+              onClick={() => setShowTerms(!showTerms)}
             >
-              <div className="zoho-logo-container">
-                <span className="zoho-c-red">Z</span>
-                <span className="zoho-c-green">O</span>
-                <span className="zoho-c-yellow">H</span>
-                <span className="zoho-c-blue">O</span>
-              </div>
-              <span className="zoho-sso-text">
-                {busy ? "Signing in..." : zohoEmail ? `Continue as ${zohoEmail}` : "Sign in with Zoho"}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="text-button small-text"
-              onClick={() => setUseEmailFallback(true)}
-            >
-              Use Email & Password instead
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={submit} className="fallback-form">
-            <button
-              type="button"
-              className="back-button-styled"
-              onClick={() => {
-                setUseEmailFallback(false);
-                setError("");
-              }}
-            >
-              <div className="zoho-logo-container" style={{ fontSize: '0.9rem', marginRight: '8px' }}>
-                <span className="zoho-c-red">Z</span>
-                <span className="zoho-c-green">O</span>
-                <span className="zoho-c-yellow">H</span>
-                <span className="zoho-c-blue">O</span>
-              </div>
-              {/* <span style={{ fontWeight: 600 }}>Back to Sign in</span> */}
+              Read Terms & Conditions
+              <span className={`terms-arrow ${showTerms ? 'open' : ''}`}>▼</span>
             </button>
             
-            {mode === "signup" && (
-              <>
-                <label className="field-label" htmlFor="zolabs-username">
-                  ZoLabs username
-                </label>
-                <input
-                  id="zolabs-username"
-                  className="text-input"
-                  type="text"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  autoComplete="username"
-                />
-              </>
-            )}
+            <div className={`terms-box ${showTerms ? 'open' : ''}`} style={{ whiteSpace: "pre-wrap" }}>
+              {TERMS_TEXT}
+            </div>
+          </div>
 
-            <label className="field-label" htmlFor="zolabs-email">
-              ZoLabs email
-            </label>
+          <label className="checkbox-row" style={{ marginBottom: "24px", justifyContent: "center" }}>
             <input
-              id="zolabs-email"
-              className="text-input"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(event) => setTermsAccepted(event.target.checked)}
             />
+            <span>I have read and accept the Terms & Conditions.</span>
+          </label>
 
-            <label className="field-label" htmlFor="zolabs-password">
-              ZoLabs password
-            </label>
-            <input
-              id="zolabs-password"
-              className="text-input"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-            />
+          {error ? <div className="error-banner">{error}</div> : null}
+          {info ? <div className="info-banner">{info}</div> : null}
 
-            {error ? <div className="error-banner">{error}</div> : null}
-            {info ? <div className="info-banner">{info}</div> : null}
+          <button type="submit" className="primary-button" disabled={busy}>
+            {busy
+              ? "Please wait…"
+              : mode === "signup"
+                ? "Create ZoLabs account"
+                : "Log in to ZoLabs"}
+          </button>
 
-            <button type="submit" className="primary-button" disabled={busy}>
-              {busy
-                ? "Please wait…"
-                : mode === "signup"
-                  ? "Create ZoLabs account"
-                  : "Log in to ZoLabs"}
-            </button>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setMode(mode === "signup" ? "login" : "signup");
+              setError("");
+              setInfo("");
+            }}
+          >
+            {mode === "signup"
+              ? "Already have a ZoLabs account? Log in instead"
+              : "New to ZoLabs? Create an account instead"}
+          </button>
 
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => {
-                setMode(mode === "signup" ? "login" : "signup");
-                setError("");
-                setInfo("");
-              }}
-            >
-              {mode === "signup"
-                ? "Already have a ZoLabs account? Log in instead"
-                : "New to ZoLabs? Create an account instead"}
-            </button>
-          </form>
-        )}
+          <div style={{ display: 'flex', alignItems: 'center', margin: '24px 0', color: '#94a3b8' }}>
+            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+            <span style={{ padding: '0 16px', fontSize: '0.85rem', fontWeight: 600 }}>OR</span>
+            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
+          </div>
+
+          <button
+            type="button"
+            className="zoho-sso-button"
+            onClick={signInWithZoho}
+            disabled={busy}
+          >
+            <div className="zoho-logo-container">
+              <span className="zoho-c-red">Z</span>
+              <span className="zoho-c-green">O</span>
+              <span className="zoho-c-yellow">H</span>
+              <span className="zoho-c-blue">O</span>
+            </div>
+            <span className="zoho-sso-text">
+              {busy ? "Signing in..." : zohoEmail ? `Continue as ${zohoEmail}` : "Sign in with Zoho"}
+            </span>
+          </button>
+        </form>
       </section>
     </main>
   );

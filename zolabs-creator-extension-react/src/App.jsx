@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { api } from "./services/api";
 import {
   getCreatorContext,
@@ -14,8 +14,6 @@ import { useAuth } from "./contexts/AuthContext";
 import { useSpeechInput } from "./hooks/useSpeechInput";
 import StepHeader from "./components/StepHeader";
 import FormSelector from "./components/FormSelector";
-import CallStatus from "./components/CallStatus";
-import ReviewResult from "./components/ReviewResult";
 import ConnectZolabs from "./components/ConnectZolabs";
 
 export default function App() {
@@ -28,15 +26,18 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [step, setStep] = useState("forms");
   const [error, setError] = useState("");
-  const [call, setCall] = useState(null);
-  const [callStatus, setCallStatus] = useState(null);
-  const [result, setResult] = useState(null);
-  const [recordId, setRecordId] = useState("");
-  const [creatingRecord, setCreatingRecord] = useState(false);
   const [busy, setBusy] = useState(false);
   const [activeSpeechField, setActiveSpeechField] = useState(null);
 
-  const speech = useSpeechInput({ timeoutMs: 30000 });
+  // Array of active/past calls
+  const [calls, setCalls] = useState([]);
+  const callsRef = useRef(calls);
+  
+  useEffect(() => {
+    callsRef.current = calls;
+  }, [calls]);
+
+  const speech = useSpeechInput();
 
   useEffect(() => {
     if (!speech.isListening) {
@@ -55,35 +56,109 @@ export default function App() {
     }
   }, [context, forms.length]);
 
+  // Polling Effect for multiple calls
   useEffect(() => {
-    if (!call?.callLogId || step !== "call") return;
-
     const timer = window.setInterval(async () => {
-      try {
-        const status = await api.getCallStatus(call.callLogId);
-        setCallStatus(status);
+      const activeCalls = callsRef.current.filter(c => 
+        !["failed", "completed_with_record", "record_failed", "no_answer", "busy"].includes(c.internalStatus)
+      );
+      
+      if (activeCalls.length === 0) return;
 
-        if (status.readyForReview) {
-          window.clearInterval(timer);
-          const callResult = await api.getCallResult(call.callLogId);
-          setResult(callResult);
-          setStep("result");
-        }
+      for (const call of activeCalls) {
+        try {
+          const status = await api.getCallStatus(call.callLogId);
+          
+          setCalls(prev => prev.map(c => {
+            if (c.callLogId === call.callLogId) {
+              return { ...c, status: status.status, durationSeconds: status.durationSeconds };
+            }
+            return c;
+          }));
 
-        if (["failed", "busy", "no_answer"].includes(status.status)) {
-          window.clearInterval(timer);
+          if (status.readyForReview && call.internalStatus !== "creating_record") {
+            // Immediately kick off record creation
+            setCalls(prev => prev.map(c => c.callLogId === call.callLogId ? { ...c, internalStatus: "creating_record" } : c));
+            
+            const callResult = await api.getCallResult(call.callLogId);
+            await handleCreateRecord(callResult, call);
+          } else if (["failed", "busy", "no_answer"].includes(status.status)) {
+            setCalls(prev => prev.map(c => c.callLogId === call.callLogId ? { ...c, internalStatus: status.status } : c));
+          }
+        } catch (pollError) {
+          console.error("Poll error for call", call.callLogId, pollError);
         }
-      } catch (pollError) {
-        setError(pollError.message);
-        window.clearInterval(timer);
       }
     }, 4000);
 
     return () => window.clearInterval(timer);
-  }, [call, step]);
+  }, []);
+
+  async function handleCreateRecord(result, callData) {
+    try {
+      const mappedAnswers = {};
+      for (const [key, value] of Object.entries(result.parsedAnswers || {})) {
+        if (key.toLowerCase().replace(/[^a-z0-9]/g, "") === "zolabscallsummary") continue;
+        if (!value || value === "<N/A>" || value === "Not captured") continue;
+        
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const field = callData.fields.find(f => 
+          f.linkName.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey ||
+          (f.label && f.label.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey)
+        );
+        
+        let mappedValue = value;
+        if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          const [yyyy, mm, dd] = value.split("-");
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthStr = months[parseInt(mm, 10) - 1];
+          mappedValue = `${dd}-${monthStr}-${yyyy}`;
+        }
+
+        if (field) {
+          mappedAnswers[field.linkName] = mappedValue;
+        } else {
+          mappedAnswers[key] = mappedValue;
+        }
+      }
+
+      const creatorRecordResponse = await createCreatorRecord(
+        context.appLinkName,
+        callData.formLinkName,
+        mappedAnswers
+      );
+
+      const id = 
+        creatorRecordResponse?.result?.[0]?.data?.ID ||
+        creatorRecordResponse?.result?.[0]?.data?.id ||
+        creatorRecordResponse?.data?.ID ||
+        creatorRecordResponse?.data?.id ||
+        creatorRecordResponse?.data?.[0]?.ID ||
+        creatorRecordResponse?.data?.[0]?.id ||
+        null;
+
+      if (!id) {
+        throw new Error("Failed to get a recognisable record ID from Creator.");
+      }
+
+      await api.recordCreated(callData.callLogId, { creatorRecordId: String(id) });
+      
+      setCalls(prev => prev.map(c => 
+        c.callLogId === callData.callLogId 
+          ? { ...c, internalStatus: "completed_with_record", recordId: String(id), summary: result.summary } 
+          : c
+      ));
+    } catch (recordError) {
+      setCalls(prev => prev.map(c => 
+        c.callLogId === callData.callLogId 
+          ? { ...c, internalStatus: "record_failed", error: recordError.message } 
+          : c
+      ));
+    }
+  }
 
   const supportedFieldCount = useMemo(
-    () => fields.filter((field) => field.type).length,
+    () => fields.filter((field) => field.type).length - 1, // Subtract the injected summary field
     [fields]
   );
 
@@ -102,6 +177,15 @@ export default function App() {
       }
 
       const normalisedFields = normaliseCreatorFields(rawFields);
+      
+      // Inject Summary Field to force ZoLabs to output a call summary in parsedAnswers
+      normalisedFields.push({
+        linkName: "zolabs_call_summary",
+        label: "Call Summary",
+        type: "long_text",
+        required: false,
+        description: "A detailed summary of the entire conversation."
+      });
 
       setFields(normalisedFields);
 
@@ -175,79 +259,22 @@ export default function App() {
         fields
       });
 
-      setCall(response);
-      setCallStatus({
+      setCalls(prev => [{
+        callLogId: response.callLogId,
+        phoneNumber: phoneNumber.replace(/\s/g, ""),
+        formDisplayName: selectedForm.display_name,
+        formLinkName: selectedForm.link_name,
         status: response.status,
-        durationSeconds: 0
-      });
-      setStep("call");
+        internalStatus: "polling", // polling, creating_record, completed_with_record, record_failed, failed, busy, no_answer
+        durationSeconds: 0,
+        fields: fields 
+      }, ...prev]);
+
+      reset();
     } catch (callError) {
       setError(callError.message);
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function createRecord() {
-    setCreatingRecord(true);
-    setError("");
-
-    try {
-      // Map ZoLabs parsed answers to strict Creator link names
-      // ZoLabs keys often come back lowercased or slightly modified from the label.
-      const mappedAnswers = {};
-      for (const [key, value] of Object.entries(result.parsedAnswers)) {
-        if (!value || value === "<N/A>" || value === "Not captured") continue;
-        
-        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const field = fields.find(f => 
-          f.linkName.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey ||
-          (f.label && f.label.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedKey)
-        );
-        
-        let mappedValue = value;
-        
-        // Auto-format YYYY-MM-DD dates to DD-MMM-YYYY as expected by Creator
-        if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-          const [yyyy, mm, dd] = value.split("-");
-          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          const monthStr = months[parseInt(mm, 10) - 1];
-          mappedValue = `${dd}-${monthStr}-${yyyy}`;
-        }
-
-        if (field) {
-          mappedAnswers[field.linkName] = mappedValue;
-        } else {
-          // Fallback if no match found
-          mappedAnswers[key] = mappedValue;
-        }
-      }
-
-      const creatorRecordResponse = await createCreatorRecord(
-        context.appLinkName,
-        selectedForm.link_name,
-        mappedAnswers
-      );
-
-      const id = 
-        creatorRecordResponse?.result?.[0]?.data?.ID ||
-        creatorRecordResponse?.result?.[0]?.data?.id ||
-        creatorRecordResponse?.data?.ID ||
-        creatorRecordResponse?.data?.id ||
-        creatorRecordResponse?.data?.[0]?.ID ||
-        creatorRecordResponse?.data?.[0]?.id ||
-        null;
-
-      if (!id) {
-        throw new Error("Failed to get a recognisable record ID from Creator.");
-      }
-
-      await api.recordCreated(call.callLogId, { creatorRecordId: String(id) });
-      setRecordId(String(id));
-    } catch (recordError) {
-      setError(recordError.message);
-    } finally {
-      setCreatingRecord(false);
     }
   }
 
@@ -257,10 +284,6 @@ export default function App() {
     setMapping(null);
     setPhoneNumber("");
     setQuery("");
-    setCall(null);
-    setCallStatus(null);
-    setResult(null);
-    setRecordId("");
     setError("");
     setStep("forms");
   }
@@ -269,8 +292,16 @@ export default function App() {
     return <ConnectZolabs onConnected={refreshSession} />;
   }
 
+  function getStatusLabel(call) {
+    if (call.internalStatus === "creating_record") return "Creating record...";
+    if (call.internalStatus === "completed_with_record") return "Record Created";
+    if (call.internalStatus === "record_failed") return "Record Failed";
+    if (call.status === "completed") return "Processing transcript...";
+    return call.status ? call.status.charAt(0).toUpperCase() + call.status.slice(1) : "Connecting...";
+  }
+
   return (
-    <main className="app-shell">
+    <main className="app-shell dashboard-app">
       <nav className="topbar">
         <div className="brand">
           <div className="brand-mark">Z</div>
@@ -283,7 +314,7 @@ export default function App() {
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {step !== "forms" ? (
             <button type="button" className="text-button" onClick={reset}>
-              Start again
+              Change Form
             </button>
           ) : null}
           
@@ -325,131 +356,152 @@ export default function App() {
         </div>
       ) : null}
 
-      {step === "forms" ? (
-        <>
-          <StepHeader
-            step="1"
-            title="Select the Creator form"
-            subtitle="ZoLabs will reuse a mapped voice form or create one automatically from the selected Creator schema."
-          />
-          <FormSelector forms={forms} onSelect={selectForm} loading={loading || busy} />
-        </>
-      ) : null}
-
-      {step === "prepare" ? (
-        <>
-          <StepHeader
-            step="2"
-            title="Prepare the call"
-            subtitle="Provide the phone number, review the generated call objective, and connect the call."
-          />
-
-          <section className="card">
-            <div className="mapping-summary">
-              <div>
-                <p className="eyebrow">Creator form</p>
-                <h2>{selectedForm?.display_name}</h2>
-                <p className="muted">{selectedForm?.link_name}</p>
-              </div>
-
-              <div>
-                <p className="eyebrow">ZoLabs voice form</p>
-                <h2>{mapping?.zolabsForm?.name || "Preparing…"}</h2>
-                <p className="muted">
-                  {mapping?.action === "created"
-                    ? "Created automatically"
-                    : "Existing mapping reused"}
-                </p>
-              </div>
+      <div className="dashboard-layout">
+        {/* Sidebar Call Queue */}
+        <aside className="calls-sidebar">
+          <h3 className="sidebar-title">Active & Past Calls</h3>
+          {calls.length === 0 ? (
+            <div className="empty-state">
+              <p>No calls yet.</p>
+              <span>Connect a call to see status here.</span>
             </div>
-
-            <div className="field-summary">
-              <span>{supportedFieldCount} supported fields</span>
-              <span>{fields.filter((field) => field.required).length} required</span>
+          ) : (
+            <div className="call-list">
+              {calls.map(c => (
+                <div className={`call-card status-${c.internalStatus === 'completed_with_record' ? 'success' : c.internalStatus === 'record_failed' ? 'failed' : 'active'}`} key={c.callLogId}>
+                  <div className="call-card-header">
+                    <strong>{c.phoneNumber}</strong>
+                    <span className="call-duration">{c.durationSeconds ? `${c.durationSeconds}s` : ""}</span>
+                  </div>
+                  <div className="call-card-form">{c.formDisplayName}</div>
+                  
+                  <div className="call-card-status">
+                    <span className={`status-indicator indicator-${c.status || 'default'}`}></span>
+                    {getStatusLabel(c)}
+                  </div>
+                  
+                  {c.recordId && (
+                    <div className="call-card-record">
+                      ID: {c.recordId}
+                    </div>
+                  )}
+                  {c.summary && (
+                    <div className="call-card-summary">
+                      <details>
+                        <summary>View Call Summary</summary>
+                        <p>{c.summary}</p>
+                      </details>
+                    </div>
+                  )}
+                  {c.error && (
+                    <div className="call-card-error">
+                      {c.error}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+          )}
+        </aside>
 
-            <label className="field-label" htmlFor="phone-number">
-              Phone number
-            </label>
-            <div className="input-with-action">
-              <input
-                id="phone-number"
-                className="text-input"
-                value={phoneNumber}
-                onChange={(event) => setPhoneNumber(event.target.value)}
-                placeholder="+919876543210"
+        {/* Main Content Area */}
+        <div className="dashboard-main">
+          {step === "forms" ? (
+            <>
+              <StepHeader
+                step="1"
+                title="Select the Creator form"
+                subtitle="ZoLabs will reuse a mapped voice form or create one automatically from the selected Creator schema."
               />
-              <button
-                type="button"
-                className={speech.isListening && activeSpeechField === 'phone' ? "mic-button active" : "mic-button"}
-                onClick={() => toggleVoice('phone', setPhoneNumber, phoneNumber)}
-              >
-                {speech.isListening && activeSpeechField === 'phone' ? "Stop" : "Speak"}
-              </button>
-            </div>
+              <FormSelector forms={forms} onSelect={selectForm} loading={loading || busy} />
+            </>
+          ) : null}
 
-            <label className="field-label" htmlFor="call-query">
-              Call objective
-            </label>
-            <div className="input-with-action align-start">
-              <textarea
-                id="call-query"
-                className="text-input textarea"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                rows="6"
+          {step === "prepare" ? (
+            <>
+              <StepHeader
+                step="2"
+                title="Prepare the call"
+                subtitle="Provide the phone number, review the generated call objective, and connect the call."
               />
-              <button
-                type="button"
-                className={speech.isListening && activeSpeechField === 'query' ? "mic-button active" : "mic-button"}
-                onClick={() => toggleVoice('query', setQuery, query)}
-              >
-                {speech.isListening && activeSpeechField === 'query' ? "Stop" : "Speak"}
-              </button>
-            </div>
 
-            <button
-              type="button"
-              className="primary-button"
-              onClick={startCall}
-              disabled={busy}
-            >
-              {busy ? "Connecting…" : "Connect Call"}
-            </button>
-          </section>
-        </>
-      ) : null}
+              <section className="card">
+                <div className="mapping-summary">
+                  <div>
+                    <p className="eyebrow">Creator form</p>
+                    <h2>{selectedForm?.display_name}</h2>
+                    <p className="muted">{selectedForm?.link_name}</p>
+                  </div>
 
-      {step === "call" ? (
-        <>
-          <StepHeader
-            step="3"
-            title="Call in progress"
-            subtitle="The status will update automatically while ZoLabs conducts the conversation."
-          />
-          <CallStatus
-            status={callStatus?.status}
-            durationSeconds={callStatus?.durationSeconds}
-            phoneNumber={phoneNumber}
-          />
-        </>
-      ) : null}
+                  <div>
+                    <p className="eyebrow">ZoLabs voice form</p>
+                    <h2>{mapping?.zolabsForm?.name || "Preparing…"}</h2>
+                    <p className="muted">
+                      {mapping?.action === "created"
+                        ? "Created automatically"
+                        : "Existing mapping reused"}
+                    </p>
+                  </div>
+                </div>
 
-      {step === "result" ? (
-        <>
-          <StepHeader
-            step="4"
-            title="Review and create the record"
-            subtitle="Validate the extracted values before creating the new record in Zoho Creator."
-          />
-          <ReviewResult
-            result={result}
-            onCreateRecord={createRecord}
-            creatingRecord={creatingRecord}
-            recordId={recordId}
-          />
-        </>
-      ) : null}
+                <div className="field-summary">
+                  <span>{supportedFieldCount} supported fields</span>
+                  <span>{fields.filter((field) => field.required).length} required</span>
+                </div>
+
+                <label className="field-label" htmlFor="phone-number">
+                  Phone number
+                </label>
+                <div className="input-with-action">
+                  <input
+                    id="phone-number"
+                    className="text-input"
+                    value={phoneNumber}
+                    onChange={(event) => setPhoneNumber(event.target.value)}
+                    placeholder="+919876543210"
+                  />
+                  <button
+                    type="button"
+                    className={speech.isListening && activeSpeechField === 'phone' ? "mic-button active" : "mic-button"}
+                    onClick={() => toggleVoice('phone', setPhoneNumber, phoneNumber)}
+                  >
+                    {speech.isListening && activeSpeechField === 'phone' ? "Stop" : "Speak"}
+                  </button>
+                </div>
+
+                <label className="field-label" htmlFor="call-query">
+                  Call objective
+                </label>
+                <div className="input-with-action align-start">
+                  <textarea
+                    id="call-query"
+                    className="text-input textarea"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    rows="6"
+                  />
+                  <button
+                    type="button"
+                    className={speech.isListening && activeSpeechField === 'query' ? "mic-button active" : "mic-button"}
+                    onClick={() => toggleVoice('query', setQuery, query)}
+                  >
+                    {speech.isListening && activeSpeechField === 'query' ? "Stop" : "Speak"}
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={startCall}
+                  disabled={busy}
+                >
+                  {busy ? "Connecting…" : "Connect Call"}
+                </button>
+              </section>
+            </>
+          ) : null}
+        </div>
+      </div>
     </main>
   );
 }

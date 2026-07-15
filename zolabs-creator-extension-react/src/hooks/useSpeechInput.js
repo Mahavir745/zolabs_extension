@@ -101,11 +101,14 @@ export function useSpeechInput({ language = "en-IN" } = {}) {
               fullTranscript = (fullTranscript + " " + currentInterim).trim();
               currentInterim = "";
             }
-            try {
-              initAndStart();
-            } catch (e) {
-              stop();
-            }
+            // Add a slight delay before restarting to prevent InvalidStateError in some browsers
+            setTimeout(() => {
+              try {
+                initAndStart();
+              } catch (e) {
+                stop();
+              }
+            }, 50);
           } else {
             setIsListening(false);
           }
