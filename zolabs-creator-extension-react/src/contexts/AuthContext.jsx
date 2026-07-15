@@ -47,6 +47,7 @@ export function AuthProvider({ children }) {
       value={{
         context,
         session,
+        setSession,
         loading,
         error,
         refreshSession

@@ -293,6 +293,7 @@ export default function ConnectZolabs({ onConnected }) {
             <button
               type="button"
               className="text-button"
+              style={{ marginBottom: '16px' }}
               onClick={() => {
                 setMode(mode === "signup" ? "login" : "signup");
                 setError("");
@@ -303,12 +304,6 @@ export default function ConnectZolabs({ onConnected }) {
                 ? "Already have a ZoLabs account? Log in instead"
                 : "New to ZoLabs? Create an account instead"}
             </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', margin: '24px 0', color: '#94a3b8' }}>
-              <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
-              <span style={{ padding: '0 16px', fontSize: '0.85rem', fontWeight: 600 }}>OR</span>
-              <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }}></div>
-            </div>
 
             <button
               type="button"

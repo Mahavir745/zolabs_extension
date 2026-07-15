@@ -17,7 +17,7 @@ import FormSelector from "./components/FormSelector";
 import ConnectZolabs from "./components/ConnectZolabs";
 
 export default function App() {
-  const { context, session, loading, error: authError, refreshSession } = useAuth();
+  const { context, session, setSession, loading, error: authError, refreshSession } = useAuth();
   const [forms, setForms] = useState([]);
   const [selectedForm, setSelectedForm] = useState(null);
   const [fields, setFields] = useState([]);
@@ -325,9 +325,11 @@ export default function App() {
             onClick={async () => {
               try {
                 await api.zolabsDisconnect();
-                refreshSession();
               } catch (e) {
                 console.error("Logout failed:", e);
+              } finally {
+                refreshSession();
+                setSession({ authenticated: false });
               }
             }}
           >
