@@ -73,10 +73,21 @@ export default function ConnectZolabs({ onConnected }) {
       }
 
       // Call our backend SSO route
-      await api.zolabsZohoSSO({ email: emailToUse, termsAccepted: true });
-      onConnected();
+      const response = await api.zolabsZohoSSO({ email: emailToUse, termsAccepted: true });
+      
+      if (response.activationRequired) {
+        setInfo(
+          `🎉 Account successfully created!\n\nFor your security, please check your inbox (${emailToUse}) and click the ZoLabs activation link.\n\nOnce activated, simply click 'Sign in with Zoho' below to jump right in!`
+        );
+        // Keep them on the SSO button view so they can just click it again after activating
+        setUseEmailFallback(false);
+      } else {
+        onConnected();
+      }
     } catch (err) {
-      setError(err.message || "Failed to sign in with Zoho. Please use the email login below.");
+      setError(
+        err.message || "Failed to sign in with Zoho. Please use the email login below."
+      );
       setUseEmailFallback(true);
     } finally {
       setBusy(false);

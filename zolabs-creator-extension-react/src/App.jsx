@@ -265,11 +265,29 @@ export default function App() {
           </div>
         </div>
 
-        {step !== "forms" ? (
-          <button type="button" className="text-button" onClick={reset}>
-            Start again
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {step !== "forms" ? (
+            <button type="button" className="text-button" onClick={reset}>
+              Start again
+            </button>
+          ) : null}
+          
+          <button 
+            type="button" 
+            className="text-button" 
+            style={{ color: '#ff6b6b' }}
+            onClick={async () => {
+              try {
+                await api.zolabsDisconnect();
+                refreshSession();
+              } catch (e) {
+                console.error("Logout failed:", e);
+              }
+            }}
+          >
+            Logout
           </button>
-        ) : null}
+        </div>
       </nav>
 
       {authError ? <div className="error-banner">{authError}</div> : null}

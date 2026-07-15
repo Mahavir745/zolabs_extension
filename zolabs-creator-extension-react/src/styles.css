@@ -536,9 +536,24 @@ button {
 }
 
 .info-banner {
-  background: rgba(0, 229, 255, 0.1);
-  border: 1px solid var(--accent);
-  color: var(--accent);
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: #fff;
+  white-space: pre-line;
+  line-height: 1.8;
+  font-size: 1.05rem;
+  box-shadow: 0 8px 32px rgba(0, 229, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  padding: 24px;
+}
+
+.info-banner::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
 }
 
 .terms-box {
