@@ -328,6 +328,7 @@ export default function App() {
               } catch (e) {
                 console.error("Logout failed:", e);
               } finally {
+                setCalls([]);
                 refreshSession();
                 setSession({ authenticated: false });
               }
