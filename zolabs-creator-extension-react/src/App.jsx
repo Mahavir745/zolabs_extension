@@ -60,7 +60,7 @@ export default function App() {
   useEffect(() => {
     const timer = window.setInterval(async () => {
       const activeCalls = callsRef.current.filter(c =>
-        !["failed", "completed_with_record", "record_failed", "no_answer", "busy"].includes(c.internalStatus)
+        !["failed", "completed_with_record", "record_failed", "no_answer", "busy", "disconnected", "canceled", "completed"].includes(c.internalStatus)
       );
 
       if (activeCalls.length === 0) return;
@@ -82,7 +82,7 @@ export default function App() {
 
             const callResult = await api.getCallResult(call.callLogId);
             await handleCreateRecord(callResult, call);
-          } else if (["failed", "busy", "no_answer"].includes(status.status)) {
+          } else if (["failed", "busy", "no_answer", "disconnected", "canceled", "completed"].includes(status.status)) {
             setCalls(prev => prev.map(c => c.callLogId === call.callLogId ? { ...c, internalStatus: status.status } : c));
           }
         } catch (pollError) {
