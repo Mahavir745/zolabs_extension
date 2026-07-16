@@ -2,18 +2,35 @@ function isZohoReady() {
   return Boolean(window.ZOHO?.CREATOR);
 }
 
+const DEMO_CONTEXT = {
+  available: false,
+  appLinkName: "demo_app",
+  appDisplayName: "Demo Creator App",
+  accountOwnerName: "",
+  userEmail: "demo@example.org"
+};
+
+// getInitParams() waits on a postMessage handshake with the parent Creator
+// frame. Outside a real Zoho Creator iframe that handshake never arrives, so
+// the call hangs forever instead of rejecting — race it against a timeout so
+// local/standalone runs still fall through to the demo context.
+function getInitParamsWithTimeout(timeoutMs = 2500) {
+  return Promise.race([
+    window.ZOHO.CREATOR.UTIL.getInitParams(),
+    new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs))
+  ]);
+}
+
 export async function getCreatorContext() {
   if (!isZohoReady()) {
-    return {
-      available: false,
-      appLinkName: "demo_app",
-      appDisplayName: "Demo Creator App",
-      accountOwnerName: "",
-      userEmail: "demo@example.org"
-    };
+    return DEMO_CONTEXT;
   }
 
-  const params = await window.ZOHO.CREATOR.UTIL.getInitParams();
+  const params = await getInitParamsWithTimeout();
+  if (!params) {
+    return DEMO_CONTEXT;
+  }
+
   const environmentMatch = /\/environment\/(development|stage)/i.exec(
     params?.envUrlFragment || ""
   );
