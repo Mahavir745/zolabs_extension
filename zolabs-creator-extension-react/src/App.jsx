@@ -123,7 +123,7 @@ export default function App() {
       }
 
       const creatorRecordResponse = await createCreatorRecord(
-        context.appLinkName,
+        callData.appLinkName,
         callData.formLinkName,
         mappedAnswers
       );
@@ -264,6 +264,7 @@ export default function App() {
         phoneNumber: phoneNumber.replace(/\s/g, ""),
         formDisplayName: selectedForm.display_name,
         formLinkName: selectedForm.link_name,
+        appLinkName: context?.appLinkName,
         status: response.status,
         internalStatus: "polling", // polling, creating_record, completed_with_record, record_failed, failed, busy, no_answer
         durationSeconds: 0,
